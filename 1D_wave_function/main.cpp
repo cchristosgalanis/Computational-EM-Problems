@@ -11,6 +11,7 @@ int main(){
     int total_size = N_points * N_points;
     int N_sim = Config::N_sim;
     int N_terms = Config::N_terms;
+    double T_total = Config::T_total;
 
     std::cout << "Allocating memory for grid...\n";
 
@@ -18,6 +19,9 @@ int main(){
     std::vector<double> T(total_size, 0.0);
     std::vector<double> A(N_sim, 0.0);
     std::vector<double> E(total_size,0.0);
+    std::vector<double> E_past(N_points, 0.0);
+    std::vector<double> E_present(N_points, 0.0);
+    std::vector<double> E_future(N_points, 0.0);
 
     // create object for functions
     Wave_solver_1D solver;
@@ -26,22 +30,27 @@ int main(){
     solver.create_grid(N_points, Config::x_start, Config::x_end, X.data(), T.data());
 
     // call function analytical solution to get Electric field motion
-    solver.analytical_solution(total_size, N_terms,N_sim, A.data(), Config::x_start, Config::x_end, Config::func, E.data(), X.data(), T.data(), Config::c, Config::pi);
+    //solver.analytical_solution(total_size, N_terms,N_sim, A.data(), Config::x_start, Config::x_end, Config::func, E.data(), X.data(), T.data(), Config::c, Config::pi);
 
-    // for (int i=0; i < total_size / 100; i++){
-    //     std::cout << E[i] << std::endl;
-    // } 
+    // call function for FDTD method
+    solver.FDTD_function(total_size,Config::x_start, Config::x_end,N_points, E_past.data(), E_present.data(), E_future.data(), Config::c, Config::pi, Config::mi, Config::sigma);
 
-    std::ofstream out_file("data/analytical_wave_equation_results.csv");
-    out_file << "x,t,E\n";
+    for (int i=0; i < N_points; i++){
+        std::cout << E_future[i] << std::endl;
+    } 
 
-    for (int i = 0; i < total_size; i++) {
-        out_file << X[i] << ","
-                 << T[i] << ","
-                 << E[i] << "\n";
+    std::ofstream out_file("FDTD_wave_equation_results.csv");
+    out_file << "x,E\n";
+
+    double dx = (Config::x_end - Config::x_start) / (N_points - 1);
+
+    for (int i = 0; i < N_points; i++) {
+        double x_coord = Config::x_start + i * dx;
+        out_file << x_coord << ","
+                 << E_future[i] << "\n";    
     }
     
     out_file.close();
 
-    std::cout << "\n[Success] Polynomial data successfully exported to 'analytical_wave_equation_results.csv'\n";
+    std::cout << "\n[Success] Final FDTD snapshot successfully exported to 'FDTD_wave_equation_results.csv'\n";
 }

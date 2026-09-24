@@ -64,3 +64,47 @@ void Wave_solver_1D::analytical_solution(int total_size, int N_terms, int N_sim,
         E[i] = E_val;
     }
 }
+
+// functio for FDTD impplementation
+void Wave_solver_1D::FDTD_function(double T_total, double x_start, double x_end, int N_points, double *E_past, double *E_present, double *E_future, const double c, const double pi, const double mi, const double sigma){
+    // spatial step
+    double dx = (x_end - x_start) / (N_points - 1);
+
+    // dt <= dx/c
+    double dt = 0.99 * (dx / c);
+    int N_time_steps = std::ceil(T_total / dt);
+    double C2 = std::pow(c * (dt / dx), 2);
+
+    // initialize E_present for t=0
+    for (int i=0; i < N_points; i++){
+        double x = x_start + i*dx;
+        E_present[i] = std::exp(-(std::pow(x-mi,2) / (2*std::pow(sigma,2))));
+    }
+
+    // Dirichlet BC 
+    E_present[0] = 0.0;
+    E_present[N_points-1] = 0.0;
+
+    for (int n=0; n < N_time_steps; n++){
+        if (n == 0){
+            for (int i=1; i < N_points - 1; i++){
+                E_future[i] = E_present[i] + 0.5 * C2 * (E_present[i+1] - 2 * E_present[i] + E_present[i-1]);
+            }
+        }
+        else {
+            for (int i=1; i < N_points - 1; i++){
+                E_future[i] = 2 * E_present[i] - E_past[i] + C2 * (E_present[i+1] - 2 * E_present[i] + E_present[i-1]);
+            }
+        }
+
+        // Dirichlet's BC 
+        E_future[0] = 0.0;
+        E_future[N_points-1] = 0.0;
+
+        // get new values
+        for (int i=0; i < N_points; i++){
+            E_past[i] = E_present[i];
+            E_present[i] = E_future[i];
+        }
+    }
+}
