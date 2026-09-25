@@ -33,13 +33,13 @@ int main(){
     //solver.analytical_solution(total_size, N_terms,N_sim, A.data(), Config::x_start, Config::x_end, Config::func, E.data(), X.data(), T.data(), Config::c, Config::pi);
 
     // call function for FDTD method
-    solver.FDTD_function(total_size,Config::x_start, Config::x_end,N_points, E_past.data(), E_present.data(), E_future.data(), Config::c, Config::pi, Config::mi, Config::sigma);
+    solver.FDTD_function(T_total, Config::x_start, Config::x_end, N_points, E_past.data(), E_present.data(), E_future.data(), Config::c, Config::pi, Config::mi, Config::sigma);
 
     for (int i=0; i < N_points; i++){
         std::cout << E_future[i] << std::endl;
     } 
 
-    std::ofstream out_file("FDTD_wave_equation_results.csv");
+    std::ofstream out_file("FDTD_wave_equation_results_100FourierTerms.csv");
     out_file << "x,E\n";
 
     double dx = (Config::x_end - Config::x_start) / (N_points - 1);
@@ -52,5 +52,5 @@ int main(){
     
     out_file.close();
 
-    std::cout << "\n[Success] Final FDTD snapshot successfully exported to 'FDTD_wave_equation_results.csv'\n";
+    std::cout << "\n[Success] Final FDTD snapshot successfully exported to 'FDTD_wave_equation_results_100FourierTerms.csv'\n";
 }

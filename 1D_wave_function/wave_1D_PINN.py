@@ -78,8 +78,8 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     # model initialization
-    layers = [2, 50, 50, 50, 50, 1] 
-    model = wave_1D_PINN(layers, first_omega0=30.0, hidden_omega0=30.0).to(device)
+    layers = [2, 100, 100, 100, 100, 1] 
+    model = wave_1D_PINN(layers, first_omega0=30.0, hidden_omega0=5.0).to(device)
 
     X_pde, X_ic, X_bc = pfn.create_points(pfn.N_pde, pfn.N_ic, pfn.N_bc, pfn.x_start, pfn.x_end, pfn.total_time)
 
@@ -90,13 +90,13 @@ if __name__ == "__main__":
     trained_model, loss_history = pfn.wave_solver_PINN(model, X_pde, X_ic, X_bc, pfn.epochs)
 
     # test PINN with c and t of numerical approach
-    df_fdtd = pd.read_csv("FDTD_wave_equation_results.csv")
+    df_fdtd = pd.read_csv("FDTD_wave_equation_results_100FourierTerms.csv")
     x_fdtd = df_fdtd["x"].values
     E_fdtd = df_fdtd["E"].values
 
     # create collocation points for PINN
     x_tensor = torch.tensor(x_fdtd, dtype=torch.float32).view(-1,1).to(device)
-    t_tensor = torch.full_like(x_tensor,2.0).to(device)
+    t_tensor = torch.full_like(x_tensor,0.4).to(device)
 
     model.eval()
     with torch.no_grad():
@@ -114,14 +114,14 @@ if __name__ == "__main__":
     plt.plot(x_fdtd, E_pinn, label='PINN (Prediction)', color='mediumblue', linewidth=2, alpha=0.8)
 
     plt.axhline(0, color='black', linestyle='--', linewidth=0.8)
-    plt.title(f'Comparison: PINN vs FDTD at t=2.0\nRelative L2 Error: {l2_error * 100:.2f}%')
+    plt.title(f'Comparison: PINN (100 neurons) vs FDTD (100 terms) at t=0.4\nRelative L2 Error: {l2_error * 100:.2f}%')
     plt.xlabel('Position (x)')
     plt.ylabel('Electric Field Amplitude E(x)')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
-    plt.fill_between(x_fdtd, E_fdtd, E_pinn, color='red', alpha=0.2, label='Error Margin') # Χρωματίζει τη διαφορά
+    plt.fill_between(x_fdtd, E_fdtd, E_pinn, color='red', alpha=0.2, label='Error Margin') 
     plt.tight_layout()
-    plt.savefig("PINN_FDTD.png", dpi=300,bbox_inches='tight')
+    plt.savefig("PINN(100 neurons)_FDTD(100 terms).png", dpi=300,bbox_inches='tight')
     plt.show()      
 
     pfn.plot_pinn_results(trained_model, loss_history, pfn.x_start, pfn.x_end, pfn.total_time, device, grid_res=1000)

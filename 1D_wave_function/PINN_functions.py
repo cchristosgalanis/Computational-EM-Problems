@@ -16,7 +16,7 @@ sigma = 0.45 # variables for Gaussing pulse
 N_pde = 10000
 N_ic = 1000
 N_bc = 1000
-total_time = 2.0
+total_time = 0.4
 x_start = 0.0
 x_end = 5.0
 epochs = 5000
@@ -137,14 +137,7 @@ def compute_loss(model, X_pde, X_ic, X_bc):
 
     loss_bc = torch.mean((model(X_bc)**2))
 
-
-# ----------------------------------------------------------------------------------------------------
-    # Analytical solution values
-# ----------------------------------------------------------------------------------------------------
-
-
-
-    return  loss_pde + loss_ic + loss_icvel + loss_bc
+    return  loss_pde + 1e3 * loss_ic + loss_icvel + 1e3*loss_bc
 
 
 # create training function 
@@ -219,7 +212,7 @@ def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid
     plt.grid(True, which="both", ls="--", alpha=0.5)
     plt.legend()
     plt.tight_layout()
-    plt.savefig('pinn_loss_history.png', dpi=300, bbox_inches='tight')
+    plt.savefig('pinn_loss_history_(100 neurons).png', dpi=300, bbox_inches='tight')
     plt.show()
 
     # Create a dense 1D spatial grid
@@ -245,5 +238,5 @@ def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid
     plt.grid(True, ls="--", alpha=0.5)
     
     plt.tight_layout()
-    plt.savefig('pinn_1d_snapshot.png', dpi=300, bbox_inches='tight')
+    plt.savefig('pinn_1d_snapshot_(100 neurons).png', dpi=300, bbox_inches='tight')
     plt.show()
