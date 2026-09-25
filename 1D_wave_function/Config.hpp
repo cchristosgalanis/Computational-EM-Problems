@@ -9,7 +9,7 @@ namespace Config {
     int N_sim = 50; // parameter for Simpon's rule 
     double x_start = 0.0;
     double x_end = 5.0;
-    double c = 1.0; // velocity of wave function parameter
+    double c = 5.0; // velocity of wave function parameter
     const double mi  = 2.5;
     const double sigma = 0.45;
     const double pi = std::acos(-1.0);
