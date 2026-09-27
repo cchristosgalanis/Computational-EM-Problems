@@ -15,6 +15,7 @@ int main(){
 
     std::cout << "Allocating memory for grid...\n";
 
+    // vectors 
     std::vector<double> X (total_size, 0.0); 
     std::vector<double> T(total_size, 0.0);
     std::vector<double> A(N_sim, 0.0);
@@ -39,6 +40,7 @@ int main(){
         std::cout << E_future[i] << std::endl;
     } 
 
+    // create output file 
     std::ofstream out_file("FDTD_wave_equation_results_100FourierTerms.csv");
     out_file << "x,E\n";
 
