@@ -16,7 +16,7 @@ sigma = 0.45 # variables for Gaussing pulse
 N_pde = 10000
 N_ic = 1000
 N_bc = 1000
-total_time = 0.4
+total_time = 1.0 # total time of simulation 
 x_start = 0.0
 x_end = 5.0
 epochs = 5000
@@ -208,11 +208,11 @@ def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid
     plt.yscale('log')
     plt.xlabel('Epochs (Adam + L-BFGS)')
     plt.ylabel('Loss (Log Scale)')
-    plt.title('PINN Training Convergence')
+    plt.title('PINN Training Convergence (t=1.5)')
     plt.grid(True, which="both", ls="--", alpha=0.5)
     plt.legend()
     plt.tight_layout()
-    plt.savefig('pinn_loss_history_(100 neurons).png', dpi=300, bbox_inches='tight')
+    plt.savefig('pinn_loss_history_(100 neurons)_1.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     # Create a dense 1D spatial grid
@@ -233,10 +233,10 @@ def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid
     
     plt.xlabel('Position (x)', fontsize=12)
     plt.ylabel('Electric Field Amplitude E(x)', fontsize=12)
-    plt.title('PINN 1D Wave Equation - Final Snapshot', fontsize=14)
+    plt.title('PINN 1D Wave Equation - Final Snapshot (t=1.5)', fontsize=14)
     plt.legend(loc='upper right')
     plt.grid(True, ls="--", alpha=0.5)
     
     plt.tight_layout()
-    plt.savefig('pinn_1d_snapshot_(100 neurons).png', dpi=300, bbox_inches='tight')
+    plt.savefig('pinn_1d_snapshot_(100 neurons)_1.png', dpi=300, bbox_inches='tight')
     plt.show()

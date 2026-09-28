@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     # create collocation points for PINN
     x_tensor = torch.tensor(x_fdtd, dtype=torch.float32).view(-1,1).to(device)
-    t_tensor = torch.full_like(x_tensor,0.4).to(device)
+    t_tensor = torch.full_like(x_tensor,1.5).to(device) # t tensor used for plot L2_norm
 
     model.eval()
     with torch.no_grad():
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     plt.plot(x_fdtd, E_pinn, label='PINN (Prediction)', color='mediumblue', linewidth=2, alpha=0.8)
 
     plt.axhline(0, color='black', linestyle='--', linewidth=0.8)
-    plt.title(f'Comparison: PINN (100 neurons) vs FDTD (100 terms) at t=0.4\nRelative L2 Error: {l2_error * 100:.2f}%')
+    plt.title(f'Comparison: PINN (100 neurons) vs FDTD (100 terms) at t=1.5\nRelative L2 Error: {l2_error * 100:.2f}%')
     plt.xlabel('Position (x)')
     plt.ylabel('Electric Field Amplitude E(x)')
     plt.legend()
