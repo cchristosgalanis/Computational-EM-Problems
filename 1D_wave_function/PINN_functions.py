@@ -17,9 +17,9 @@ N_pde = 10000
 N_ic = 1000
 N_bc = 1000
 total_time = 1.0 # total time of simulation 
-x_start = 0.0
+x_start = 0.0 
 x_end = 5.0
-epochs = 5000
+epochs = 5000 # adam and L-BFGS iterations
 
 
 def create_points(N_pde, N_ic, N_bc, x_start, x_end, total_time):
