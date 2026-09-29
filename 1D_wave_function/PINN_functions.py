@@ -201,7 +201,7 @@ def wave_solver_PINN(model, X_pde, X_ic, X_bc, epochs):
     return model, loss_history
 
 
-
+# function to plot total loss and PINNs solution approach
 def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid_res=1000):
     plt.figure(figsize=(8, 5))
     plt.plot(loss_history, color='blue', label='Total Loss')
