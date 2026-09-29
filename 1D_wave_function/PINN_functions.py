@@ -215,7 +215,7 @@ def plot_pinn_results(model, loss_history, x_start, x_end, T_total, device, grid
     plt.savefig('pinn_loss_history_(100 neurons)_1.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-    # Create a dense 1D spatial grid
+    # create a dense 1D spatial grid
     x_axis = torch.linspace(x_start, x_end, grid_res).reshape(-1, 1)
     
     t_axis = torch.full_like(x_axis, T_total)

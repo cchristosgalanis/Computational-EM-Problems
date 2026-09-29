@@ -109,6 +109,7 @@ if __name__ == "__main__":
 
     print(f"Relative L2 error between PINN and FDTD: {l2_error * 100:.3f}%")
 
+    # create plot with FDTD and PINNs approach
     plt.figure(figsize=(10, 6), dpi=150)
     plt.plot(x_fdtd, E_fdtd, label='FDTD (Ground Truth)', color='black', linestyle='--', linewidth=2)
     plt.plot(x_fdtd, E_pinn, label='PINN (Prediction)', color='mediumblue', linewidth=2, alpha=0.8)
