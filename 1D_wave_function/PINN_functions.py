@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.optim as optim
 import matplotlib.pyplot as plt
+import copy
 
 """
     this file contains functions that are used for PINN approach for 1D wave function. 
@@ -19,6 +20,7 @@ N_bc = 1000
 total_time = 1.0 # total time of simulation 
 x_start = 0.0 
 x_end = 5.0
+dt = 0.5 # # parameter for time merching
 epochs = 5000 # adam and L-BFGS iterations
 
 
@@ -48,6 +50,39 @@ def create_points(N_pde, N_ic, N_bc, x_start, x_end, total_time):
     X_right = torch.zeros(points_per_bound,2)
     X_right[:,0] = x_end
     X_right[:,1] = torch.rand(points_per_bound) * total_time
+
+    X_bc = torch.cat([X_left,X_right], dim=0)
+
+    return X_pde, X_ic, X_bc
+
+
+# create points for time merching
+def create_points_merch(N_pde, N_ic, N_bc, x_start, x_end, t_start, t_end):
+    # create collocation points | (x,t) E (0,1)
+    X_pde = torch.rand(N_pde,2)
+
+    # get this values to real problem
+    X_pde[:,0] = x_start + X_pde[:,0] * (x_end - x_start) # x parameter
+    X_pde[:,1] = t_start + X_pde[:,1] * (t_end - t_start) # t parameter
+
+    X_pde.requires_grad = True # for being able to use AD
+
+    # points for initial condition (x,t) E [0,L] x [0]
+    X_ic = torch.zeros(N_ic,2)
+    X_ic[:,0] = x_start + torch.rand(N_ic) * (x_end - x_start)
+    X_ic[:,1] = t_start
+    X_ic.requires_grad = True 
+
+    # points for Dirichlet Boundary Conditions
+    points_per_bound = N_bc // 2 # seperate space to 2 (left and right)
+
+    X_left = torch.zeros(points_per_bound, 2)
+    X_left[:,0] = x_start
+    X_left[:,1] = torch.rand(points_per_bound) * (t_end - t_start)
+
+    X_right = torch.zeros(points_per_bound,2)
+    X_right[:,0] = x_end
+    X_right[:,1] = torch.rand(points_per_bound) * (t_end - t_start)
 
     X_bc = torch.cat([X_left,X_right], dim=0)
 
@@ -199,6 +234,189 @@ def wave_solver_PINN(model, X_pde, X_ic, X_bc, epochs):
     print("\n Train finished\n")
 
     return model, loss_history
+
+
+# function to compute loss for time merching
+def compute_loss_marching(model, target_pos, target_vel, X_pde, X_ic, X_bc):
+    # ----------------------------------------------------------------------------------------------------
+    # PDE | physics loss
+# ----------------------------------------------------------------------------------------------------
+
+    E = model(X_pde)
+    # compute 1st order of E with respect to X_pde
+    dE_DXpde = torch.autograd.grad(
+        outputs=E,
+        inputs=X_pde,
+        grad_outputs=torch.ones_like(E),
+        retain_graph=True,
+        create_graph=True
+    )[0]
+
+    # seperate derivatives
+    E_x = dE_DXpde[:, 0:1] # θΕ / θx
+    E_t = dE_DXpde[:, 1:2] # θΕ / θt
+
+    # compute 2nd order derivatives
+    E_xx = torch.autograd.grad(
+        outputs=E_x,
+        inputs=X_pde,
+        grad_outputs=torch.ones_like(E_x),
+        retain_graph=True,
+        create_graph=True
+    )[0][:, 0:1]
+
+
+    E_tt = torch.autograd.grad(
+        outputs=E_t,
+        inputs=X_pde,
+        grad_outputs=torch.ones_like(E_t),
+        retain_graph=True,
+        create_graph=True
+    )[0][:, 1:2]
+
+    # PDE function 
+    f_pde = (1.0 / C**2) * E_tt -  E_xx
+
+    # Physics loo
+    loss_pde = torch.mean(f_pde**2)
+
+    # ----------------------------------------------------------------------------------------------------
+    # Dirichlet Boundary Conditions (0,t) = 0 and (L,t) = 0
+# ----------------------------------------------------------------------------------------------------
+
+    loss_bc = torch.mean((model(X_bc)**2))
+
+# ----------------------------------------------------------------------------------------------------
+
+    # using curr and pre model to compute loss for new initial conditions
+    E_curr = model(X_ic)
+    dE_curr_dt = torch.autograd.grad(
+        E_curr, X_ic,
+        grad_outputs = torch.ones_like(E_curr),
+        create_graph=True
+    )[0][:, 1:2]
+
+    # compute loss for initial conditions
+    loss_ic_pos = torch.mean((E_curr - target_pos)**2)
+    loss_ic_vel = torch.mean((dE_curr_dt - target_vel)**2)
+
+    return loss_pde + loss_bc + loss_ic_pos + loss_ic_vel
+
+# create function for time-merching solution (Casuality Problem)
+def time_merching_solution(model,x_start,x_end,total_time,dt,epochs):
+    device = next(model.parameters()).device
+
+    # set time for each model
+    K = int(total_time / dt) # outter loop for each model
+    print("\n Starting model training with Time-Merching approach...\n")
+
+    models = []
+    prev_model = None
+    k = 0
+
+    for k in range(K):
+        t_start = k * dt
+        t_end = (k+1) * dt
+        X_pde, X_ic, X_bc = create_points_merch(N_pde, N_ic, N_bc, x_start, x_end, t_start,t_end)
+
+        X_pde = X_pde.to(device)
+        X_ic = X_ic.to(device)
+        X_bc = X_bc.to(device)
+
+        target_pos = None
+        target_vel = None
+        if k > 0:
+            E_prev = prev_model(X_ic)
+            dE_prev_dt = torch.autograd.grad(
+                E_prev, X_ic, 
+                grad_outputs=torch.ones_like(E_prev), 
+                create_graph=False,
+                retain_graph=True
+            )[0][:, 1:2]
+            
+            target_pos = E_prev.detach()
+            target_vel = dE_prev_dt.detach()
+
+        optimizer = optim.Adam(model.parameters(), lr = 1e-4)
+
+        for epoch in range(epochs):
+            optimizer.zero_grad()
+
+            if k == 0:
+                loss = compute_loss(model, X_pde, X_ic, X_bc)
+            else:
+                loss = compute_loss_marching(model, target_pos, target_vel, X_pde, X_ic, X_bc)
+
+            loss.backward()
+            optimizer.step()
+
+            if epoch % 500 == 0:
+                print(f"Epoch: {epoch} | Loss: {loss.item():.6e}")
+
+        print(f"Model window {k} training finished with Adam | Continue with L-BFGS \n")
+
+            # train with L-BFGS
+        optim_lbfgs = optim.LBFGS(
+                model.parameters(),
+                max_iter=5000, 
+                tolerance_grad=1e-7, 
+                tolerance_change=1e-9, 
+                history_size=50, 
+                lr=0.05
+        )
+
+        lbfgs_iter = 0
+        def closure():
+            nonlocal lbfgs_iter
+            optim_lbfgs.zero_grad()
+
+            if k == 0:
+                loss_lbfgs = compute_loss(model, X_pde, X_ic, X_bc)
+            else:
+                loss_lbfgs = compute_loss_marching(model, prev_model, X_pde, X_ic, X_bc)
+                
+            loss_lbfgs.backward()
+
+            if lbfgs_iter % 100 == 0:
+                print(f"L-BFGS Step: {lbfgs_iter:04d} | Loss: {loss_lbfgs.item():.6e}")
+            lbfgs_iter += 1
+            return loss_lbfgs
+
+        optim_lbfgs.step(closure)
+
+            # keep previous model | freeze weights
+        prev_model = copy.deepcopy(model)
+        models.append(prev_model)
+        prev_model.eval()
+        for param in prev_model.parameters():
+            param.requires_grad = False
+
+    return models 
+
+# function used to get models prediction 
+def predict_wave(models_list, x_tensor, t_value, dt):
+    k = int(t_value / dt)
+
+    k = min(k, len(models_list) - 1)
+    
+    target_model = models_list[k]
+    target_model.eval() 
+    
+    if x_tensor.dim() == 1:
+        x_tensor = x_tensor.unsqueeze(1)
+        
+    N = x_tensor.shape[0]
+    
+    t_tensor = torch.full((N, 1), t_value, dtype=torch.float32)
+    
+    X_test = torch.cat([x_tensor, t_tensor], dim=1)
+    
+
+    with torch.no_grad():
+        E_pred = target_model(X_test)
+        
+    return E_pred.cpu().numpy()
+
 
 
 # function to plot total loss and PINNs solution approach
