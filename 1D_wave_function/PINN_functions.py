@@ -17,7 +17,7 @@ sigma = 0.45 # variables for Gaussing pulse
 N_pde = 10000
 N_ic = 1000
 N_bc = 1000
-total_time = 1.0 # total time of simulation 
+total_time = 2.0 # total time of simulation 
 x_start = 0.0 
 x_end = 5.0
 dt = 0.5 # # parameter for time merching
@@ -373,7 +373,7 @@ def time_merching_solution(model,x_start,x_end,total_time,dt,epochs):
             if k == 0:
                 loss_lbfgs = compute_loss(model, X_pde, X_ic, X_bc)
             else:
-                loss_lbfgs = compute_loss_marching(model, prev_model, X_pde, X_ic, X_bc)
+                loss_lbfgs = compute_loss_marching(model, target_pos, target_vel, X_pde, X_ic, X_bc)
                 
             loss_lbfgs.backward()
 
@@ -396,26 +396,28 @@ def time_merching_solution(model,x_start,x_end,total_time,dt,epochs):
 # function used to get models prediction 
 def predict_wave(models_list, x_tensor, t_value, dt):
     k = int(t_value / dt)
-
-    k = min(k, len(models_list) - 1)
+    k = min(k, len(models_list) - 1) 
     
     target_model = models_list[k]
-    target_model.eval() 
+    target_model.eval()
+
+    device = next(target_model.parameters()).device
+    
+    x_tensor = x_tensor.to(device)
     
     if x_tensor.dim() == 1:
         x_tensor = x_tensor.unsqueeze(1)
         
     N = x_tensor.shape[0]
-    
-    t_tensor = torch.full((N, 1), t_value, dtype=torch.float32)
+  
+    t_tensor = torch.full((N, 1), t_value, dtype=torch.float32, device=device)
     
     X_test = torch.cat([x_tensor, t_tensor], dim=1)
     
-
     with torch.no_grad():
         E_pred = target_model(X_test)
         
-    return E_pred.cpu().numpy()
+    return E_pred.cpu().numpy().flatten()
 
 
 
