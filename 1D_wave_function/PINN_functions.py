@@ -78,11 +78,11 @@ def create_points_merch(N_pde, N_ic, N_bc, x_start, x_end, t_start, t_end):
 
     X_left = torch.zeros(points_per_bound, 2)
     X_left[:,0] = x_start
-    X_left[:,1] = torch.rand(points_per_bound) * (t_end - t_start)
+    X_left[:,1] = t_start + torch.rand(points_per_bound) * (t_end - t_start)
 
     X_right = torch.zeros(points_per_bound,2)
     X_right[:,0] = x_end
-    X_right[:,1] = torch.rand(points_per_bound) * (t_end - t_start)
+    X_right[:,1] = t_start + torch.rand(points_per_bound) * (t_end - t_start)
 
     X_bc = torch.cat([X_left,X_right], dim=0)
 
@@ -213,6 +213,8 @@ def wave_solver_PINN(model, X_pde, X_ic, X_bc, epochs):
     )  
 
     lbfgs_iter = 0
+
+    # definition of lbfgs algorithm 
     def closure():
         nonlocal lbfgs_iter
         optim_lbfgs.zero_grad()
@@ -300,7 +302,7 @@ def compute_loss_marching(model, target_pos, target_vel, X_pde, X_ic, X_bc):
     loss_ic_pos = torch.mean((E_curr - target_pos)**2)
     loss_ic_vel = torch.mean((dE_curr_dt - target_vel)**2)
 
-    return loss_pde + loss_bc + loss_ic_pos + loss_ic_vel
+    return loss_pde + 1e3 * loss_bc + 1e3 * loss_ic_pos + loss_ic_vel
 
 # create function for time-merching solution (Casuality Problem)
 def time_merching_solution(model,x_start,x_end,total_time,dt,epochs):
