@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     # create collocation points for PINN
     x_tensor = torch.tensor(x_fdtd, dtype=torch.float32).view(-1,1).to(device)
-    t_tensor = torch.full_like(x_tensor,1.5).to(device) # t tensor used for plot L2_norm
+    t_tensor = torch.full_like(x_tensor,1.6).to(device) # t tensor used for plot L2_norm
 
     model.eval()
     with torch.no_grad():
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     plt.plot(x_fdtd, E_pinn, label='PINN (Prediction)', color='mediumblue', linewidth=2, alpha=0.8)
 
     plt.axhline(0, color='black', linestyle='--', linewidth=0.8)
-    plt.title(f'Comparison: PINN (100 neurons) vs FDTD (100 terms) at t=1.5\nRelative L2 Error: {l2_error * 100:.2f}%')
+    plt.title(f'Comparison: PINN (100 neurons) vs FDTD (100 terms) at t=1.6\nRelative L2 Error: {l2_error * 100:.2f}%')
     plt.xlabel('Position (x)')
     plt.ylabel('Electric Field Amplitude E(x)')
     plt.legend()
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 #     dt = 0.5
 #     models_list = pfn.time_merching_solution(model, pfn.x_start, pfn.x_end, pfn.total_time, dt, pfn.epochs)
 
-#     target_times = [0.4, 0.6, 1.0, 1.5, 2.0]
+#     target_times = [0.4, 0.6, 1.0, 1.6, 2.0]
 
 #     df_fdtd = pd.read_csv("FDTD_wave_equation_results_100FourierTerms.csv")
     

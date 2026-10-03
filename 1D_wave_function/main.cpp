@@ -14,7 +14,7 @@ int main(){
     int N_terms = Config::N_terms;
     double T_total = Config::T_total;
 
-    double target_times[] = {0.4, 0.6, 1.0, 1.5, 2.0};
+    double target_times[] = {0.4, 0.6, 1.0, 1.6, 2.0};
     int num_times = sizeof(target_times) / sizeof(target_times[0]);
 
     std::cout << "Allocating memory for grid...\n";
@@ -38,7 +38,7 @@ int main(){
     double dx = (Config::x_end - Config::x_start) / (N_points - 1);
 
     // call function analytical solution to get Electric field motion
-    solver.analytical_solution(total_size, N_terms,N_sim, A.data(), Config::x_start, Config::x_end, Config::func, E.data(), X.data(), T.data(), Config::c, Config::pi);
+    // solver.analytical_solution(total_size, N_terms,N_sim, A.data(), Config::x_start, Config::x_end, Config::func, E.data(), X.data(), T.data(), Config::c, Config::pi);
 
     // call function for FDTD method
     solver.FDTD_function(T_total, Config::x_start, Config::x_end, N_points, E_past.data(), E_present.data(), E_future.data(), Config::c, Config::pi, Config::mi, Config::sigma);
@@ -61,9 +61,9 @@ int main(){
 
     std::cout << "\n[Success] Final FDTD snapshot successfully exported to 'FDTD_wave_equation_results_100FourierTerms.csv'\n";
     
-    return 0;
-}
-
+  /* 
+    code for getting .csv file for multiple time targets for FDTD method
+  */
 
     // // Create output file and write headers (x, t, E) for Python compatibility
     // std::ofstream out_file("FDTD_wave_equation_results_100FourierTerms.csv");
@@ -97,4 +97,7 @@ int main(){
     // out_file.close();
 
     // std::cout << "\n FDTD snapshots successfully exported to 'FDTD_wave_equation_results_100FourierTerms.csv'\n";
+
+    return 0;
+}
     
