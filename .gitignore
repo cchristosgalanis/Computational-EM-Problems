@@ -6,3 +6,4 @@ diagrams.py
 __pycache__/
 *.pyc
 .vscode/
+*.txt
