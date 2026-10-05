@@ -421,6 +421,172 @@ def predict_wave(models_list, x_tensor, t_value, dt):
         
     return E_pred.cpu().numpy().flatten()
 
+# ---- operators ----
+
+def pde_operator(model, x):
+    E = model(x)
+
+    dE = torch.autograd.grad(E,
+                             x,
+                             torch.ones_like(E),
+                            create_graph=True)[0]
+
+    E_x = dE[:, 0:1]
+    E_t = dE[:, 1:2]
+
+    E_xx = torch.autograd.grad(dE[:, 0:1],
+                                x,
+                                torch.ones_like(E_x),
+                                create_graph=True)[0][:, 0:1]
+
+    E_tt = torch.autograd.grad(dE[:, 1:2],
+                               x,
+                               torch.ones_like(E_t),
+                               create_graph=True)[0][:, 1:2]
+
+    return (1.0 / C**2) * E_tt - E_xx
+
+
+def ic_pos_operator(model, x):
+    G = torch.exp(-((x[:, 0:1] - mi)**2) / (2 * (sigma**2)))
+    return model(x) - G
+
+
+def ic_vel_operator(model, x):
+    E = model(x)
+    dE = torch.autograd.grad(E,
+                             x,
+                             torch.ones_like(E),
+                             create_graph=True)[0]
+    return dE[:, 1:2]    
+
+
+def bc_operator(model, x):
+    return model(x)
+
+
+# function to compute ntk traces values
+def compute_ntk_traces(model, X_points, operator_fn, num_samples):
+    """
+        compute average trace of NTK matrix for given operator function
+    """
+
+    sample_size = min(X_points.shape[0], num_samples)
+    idx = torch.randperm(X_points.shape[0])[:sample_size]
+    X_sample = X_points[idx].clone().requires_grad_(True)
+
+    trace = 0.0
+    for i in range(sample_size):
+        model.zero_grad()
+        target = operator_fn(model, X_sample[i:i+1])
+
+        # compute gradients of target with respect to all model's weights
+        gradients = torch.autograd.grad(target, model.parameters(),allow_unused=True)
+
+        trace += sum(torch.sum(g**2) for g in gradients if g is not None)
+
+    return trace / sample_size
+
+
+# function to compute adaptive loss weights based on NTK traces
+def compute_adaptive_loss(model, X_pde, X_ic, X_bc, lam_pde, lam_ic_pos, lam_ic_vel, lam_bc):
+    # pde loss
+    f_pde = pde_operator(model, X_pde)
+    loss_pde = torch.mean(f_pde**2)
+
+    # ic position loss
+    f_ic_pos = ic_pos_operator(model, X_ic)
+    loss_ic_pos = torch.mean(f_ic_pos**2)
+
+    # ic velocity loss
+    f_ic_vel = ic_vel_operator(model, X_ic)
+    loss_ic_vel = torch.mean(f_ic_vel**2)
+
+    # bc loss
+    f_bc = bc_operator(model, X_bc)
+    loss_bc = torch.mean(f_bc**2)
+
+    # total loss
+    total_loss = (lam_pde*loss_pde + 
+                  lam_ic_pos*loss_ic_pos + 
+                  lam_ic_vel*loss_ic_vel +
+                  lam_bc*loss_bc)
+
+    return total_loss, loss_pde, loss_ic_pos, loss_ic_vel, loss_bc
+
+
+#   NTK PINNs approach to train neural network
+def wave_solver_PINN_NTK(model, X_pde, X_ic, X_bc, epochs, update_freq=100, alpha=0.9):
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+
+    loss_history = []
+
+    # initialize dynamic weights
+    lam_pde, lam_ic_pos, lam_ic_vel, lam_bc = 1.0, 1.0, 1.0, 1.0
+
+    for epoch in range(epochs):
+        if epoch % update_freq == 0:
+            tr_pde = compute_ntk_traces(model, X_pde, pde_operator,100)
+            tr_ic_pos = compute_ntk_traces(model, X_ic, ic_pos_operator,100)
+            tr_ic_vel = compute_ntk_traces(model, X_ic, ic_vel_operator,100)
+            tr_bc = compute_ntk_traces(model, X_bc, bc_operator,100)
+
+            tr_total = tr_pde + tr_ic_pos + tr_ic_vel + tr_bc
+
+            # using equations of paper
+            lam_pde_1 = tr_total / (tr_pde + 1e-8)
+            lam_ic_pos_1 = tr_total / (tr_ic_pos + 1e-8)
+            lam_ic_vel_1 = tr_total / (tr_ic_vel + 1e-8)
+            lam_bc_1 = tr_total / (tr_bc + 1e-8)
+
+            # using moving averate
+            lam_pde = alpha * lam_pde + (1 - alpha) * lam_pde_1
+            lam_ic_pos = alpha * lam_ic_pos + (1 - alpha) * lam_ic_pos_1
+            lam_ic_vel = alpha * lam_ic_vel + (1 - alpha) * lam_ic_vel_1
+            lam_bc = alpha * lam_bc + (1 - alpha) * lam_bc_1
+
+        optimizer.zero_grad()
+        total_loss, loss_pde, loss_ic_pos, loss_ic_vel, loss_bc = compute_adaptive_loss(model, X_pde, X_ic, X_bc, lam_pde, lam_ic_pos, lam_ic_vel, lam_bc)
+
+        total_loss.backward()
+        optimizer.step()    
+        loss_history.append(total_loss.item())
+
+        if epoch % 500 == 0:
+            print(f"Epoch: {epoch} | Total Loss: {total_loss.item():.6e} | PDE Loss: {loss_pde.item():.6e} | IC Pos Loss: {loss_ic_pos.item():.6e} | IC Vel Loss: {loss_ic_vel.item():.6e} | BC Loss: {loss_bc.item():.6e}")  
+            print(f"   [NTK \u03bb weights] PDE: {lam_pde:.1f} | IC_pos: {lam_ic_pos:.1f} | IC_vel: {lam_ic_vel:.1f} | BC: {lam_bc:.1f}")
+
+        print("\n--- Adam Training Finished. Starting L-BFGS with Frozen NTK Weights ---\n")
+
+        # L-BFGS
+        optim_lbfgs = optim.LBFGS(
+            model.parameters(),
+            max_iter=5000, 
+            tolerance_grad=1e-7, 
+            tolerance_change=1e-9, 
+            history_size=50, 
+            lr=0.05
+        )  
+
+        lbfgs_iter = 0
+        def closure():
+            nonlocal lbfgs_iter
+            optim_lbfgs.zero_grad()
+            total_loss, _, _, _, _ = compute_adaptive_loss(
+                model, X_pde, X_ic, X_bc, lam_pde, lam_ic_pos, lam_ic_vel, lam_bc
+            )
+            total_loss.backward()
+            loss_history.append(total_loss.item())
+
+            if lbfgs_iter % 100 == 0:
+                print(f"L-BFGS Step: {lbfgs_iter:04d} | Loss: {total_loss.item():.6e}")
+            lbfgs_iter += 1
+            return total_loss
+
+        optim_lbfgs.step(closure)
+        print("\n--- Training Finished Completely ---\n")
+
+        return model, loss_history
 
 
 # function to plot total loss and PINNs solution approach
