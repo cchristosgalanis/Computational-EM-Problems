@@ -10,9 +10,7 @@ The main objective is to explore how PINNs can approximate the solution of a tim
 The project focuses on the 1D wave equation:
 
 \[
-\frac{\partial^2 u}{\partial t^2}
-=
-c^2 \frac{\partial^2 u}{\partial x^2}
+\frac{\partial^2 u}{\partial t^2}=c^2 \frac{\partial^2 u}{\partial x^2}
 \]
 
 where:
