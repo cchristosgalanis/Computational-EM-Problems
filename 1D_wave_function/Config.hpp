@@ -13,7 +13,7 @@ namespace Config {
     const double mi  = 2.5;
     const double sigma = 0.45;
     const double pi = std::acos(-1.0);
-    double T_total = 1.6; // simulation time for FDTD
+    double T_total = 2.0; // simulation time for FDTD
 
     double func(double x, int n){
         return std::exp(-std::pow(x - mi,2) / (2 * std::pow(sigma,2))) * std::sin(n * pi * x / x_end);
