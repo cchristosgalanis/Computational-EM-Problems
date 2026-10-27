@@ -63,7 +63,7 @@ int main(){
         saving to .csv file Hz, |E| = (Ex^2+Ey^2)^(1/2), Poynting vector, W -> electromagnetic energy
     */
 
-    std::ofstream file("FDTD_data.csv");
+    std::ofstream file("FDTD_data_smooth_dielectric.csv");
     file << "x,y,eps,Hz,Ex,Ey,E_mag,W,Sx,Sy,S_mag\n";
 
     for (int i=0; i<Config::Nx_points; i++){

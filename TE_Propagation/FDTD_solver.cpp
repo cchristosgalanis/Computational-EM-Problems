@@ -7,6 +7,8 @@
 
 // function to create 2D grid
 void FDTD_solver::create_grid(int Nx_points, int Ny_points, double eps_0, double eps_r, double *eps, double *mu, double *sigma_ex, double *sigma_ey, double *sigma_mx, double *sigma_my){
+    int x_interface = std::round((Config::x0 - Config::x_start) / Config::dx);
+
     for (int i=0; i<Nx_points; i++){
         for (int j=0; j<Ny_points; j++){
             int idx = i * Ny_points + j; // flatten memory
@@ -17,7 +19,15 @@ void FDTD_solver::create_grid(int Nx_points, int Ny_points, double eps_0, double
             // all space has μ0
             mu[idx] = Config::mu_0;
 
-            if (x < Config::x0){
+            // dielectric space and dielectric interface
+            if (x_interface == Config::x0){
+                eps[idx] = eps_0 * ((1.0 + Config::eps_r)/2.0);
+                sigma_ex[idx] = 0.0;
+                sigma_ey[idx] = 0.0;
+                sigma_mx[idx] = 0.0;
+                sigma_my[idx] = 0.0;
+            }
+            else if (x_interface < Config::x0){
                 eps[idx] = eps_0;
                 sigma_ex[idx] = 0.0;
                 sigma_ey[idx] = 0.0;
@@ -25,7 +35,7 @@ void FDTD_solver::create_grid(int Nx_points, int Ny_points, double eps_0, double
                 sigma_my[idx] = 0.0;
             }
             else {
-                eps[idx] = eps_0 * eps_r;
+                eps[idx] = eps_0 * Config::eps_r;
                 sigma_ex[idx] = 0.0;
                 sigma_ey[idx] = 0.0;
                 sigma_mx[idx] = 0.0;

@@ -12,7 +12,7 @@ namespace Config {
     const double y_start = 0.0;
     const double y_end = 1.0;
     const int Nx_points = 1500;
-    const int Ny_points = 100;
+    const int Ny_points = 1000;
     const double x0 = 1.0;
     // PML boundaries
     const int N_pml_x = 10;
