@@ -21,10 +21,10 @@ namespace Config {
     const double sigma_max = 0.05;
     const int pml_order = 3;
     // problem variables
-    const double T_simulation = 12e-9; // time of simulation
+    const double T_simulation = 4e-9; // time of simulation
     const double c0 = 2.998e8; // speed of light
     const double eps_0 = 8.854e-12; 
-    const double mu_0 = (4.0*pi)*10e-7;
+    const double mu_0 = (4.0*pi)*1e-7;
     const double eps_r = 12.0;
     const double Ho = 2.0; // Ho for magnetic Gaussian pulse as initial state
     const double mean_x = 0.5; // Average value for x axe for Gaussian pulse

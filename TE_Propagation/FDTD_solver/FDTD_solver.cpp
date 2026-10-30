@@ -45,20 +45,20 @@ void FDTD_solver::create_grid(int Nx_points, int Ny_points, double eps_0, double
             // PML boundaries creation
             if (i < Config::N_pml_x){
                 sigma_ex[idx] = Config::sigma_max * std::pow((double)(Config::N_pml_x - i)/Config::N_pml_x,Config::pml_order);
-                sigma_mx[idx] = sigma_ex[idx] * (Config::mu_0/eps_0);
+                sigma_mx[idx] = sigma_ex[idx] * (Config::mu_0/eps[idx]);
             }
             else if (i >= Nx_points - Config::N_pml_x){
                 sigma_ex[idx] = Config::sigma_max * std::pow((double)(i - (Nx_points-Config::N_pml_x)+1)/Config::N_pml_x,Config::pml_order);
-                sigma_mx[idx] = sigma_ex[idx] * (Config::mu_0/eps_0);
+                sigma_mx[idx] = sigma_ex[idx] * (Config::mu_0/eps[idx]);
             }
 
             if (j < Config::N_pml_y){
                 sigma_ey[idx] = Config::sigma_max * std::pow((double)(Config::N_pml_y-j)/Config::N_pml_y, Config::pml_order);
-                sigma_my[idx] = sigma_ey[idx] * (Config::mu_0/eps_0);
+                sigma_my[idx] = sigma_ey[idx] * (Config::mu_0/eps[idx]);
             }
             else if (j >= Ny_points - Config::N_pml_y){
                 sigma_ey[idx] = Config::sigma_max * std::pow((double)(j-(Ny_points - Config::N_pml_y)+1)/Config::N_pml_y, Config::pml_order);
-                sigma_my[idx] = sigma_ey[idx] * (Config::mu_0/eps_0);
+                sigma_my[idx] = sigma_ey[idx] * (Config::mu_0/eps[idx]);
             }
         }
     }
@@ -177,4 +177,69 @@ void FDTD_solver::FDTD(int Nx_points, int Ny_points, const double *coef_ex1, con
                 }
             }
         }
+}
+
+/* 
+    implementation of functions that create snapshot datas for solver's stability
+
+*/
+
+// function to create initial Gaussian pulse
+void FDTD_solver::initial_pulse(int Nx_points, int Ny_points, double *Ex_present, double *Ey_present, double *Hzx_present, double *Hzy_present, double *Hz_present){
+    for (int i=0; i<Nx_points; i++){
+        for (int j=0; j<Ny_points; j++){
+            double x = Config::x_start + (i*Config::dx);
+            double y = Config::y_start + (j*Config::dy);
+
+            int idx = i * Ny_points + j;
+
+            // initilaize Hz 
+                /* 
+                    using Berenger method so we have to compute Hozx and Hozy and add them together to get 
+                    Hoz value for initial condition
+                */
+               Hzx_present[idx] = (Config::Ho / 2) * std::exp(-(std::pow((x - Config::mean_x),2))/(2*std::pow(Config::sigma_g,2)));
+               Hzy_present[idx] = (Config::Ho / 2) * std::exp(-(std::pow((y - Config::mean_y),2))/(2*std::pow(Config::sigma_g,2)));
+               Hz_present[idx] = Hzx_present[idx] + Hzy_present[idx];
+
+               // initialize electric field
+               Ex_present[idx] = 0.0;
+               Ey_present[idx] = 0.0;
+        }
+    }
+}
+
+// function for FDTD solver to create snapshot datas
+void FDTD_solver::snapshots_FDTD(int Nx_points, int Ny_points, int steps_to_run, const double *coef_ex1, const double *coef_ex2, const double *coef_ey1, const double *coef_ey2,
+            const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double *Ex_future, double *Ex_present, double *Ey_future, double *Ey_present,
+            double *Hzx_future, double *Hzy_future, double *Hzx_present, double *Hzy_present, double *Hz_future, double *Hz_present){
+
+    
+    for (int n=0; n<steps_to_run; n++){
+        for (int i=0; i<Nx_points-1; i++){
+            for (int j=0; j<Ny_points-1; j++){
+                int idx = i * Ny_points + j;
+                Hzx_future[idx] = coef_hxz1[idx] * Hzx_present[idx] - coef_hzx2[idx]*(Ey_present[idx+Ny_points] - Ey_present[idx]);
+                Hzy_future[idx] = coef_hzy1[idx] * Hzy_present[idx] + coef_hzy2[idx]*(Ex_present[idx+1] - Ex_present[idx]);
+                Hz_future[idx] = Hzx_future[idx] + Hzy_future[idx];
+            }
+        }
+        for (int i=1; i<Nx_points; i++){
+            for (int j=1; j<Ny_points; j++){
+                int idx = i * Ny_points + j;
+                Ex_future[idx] = coef_ex1[idx] * Ex_present[idx] + coef_ex2[idx]*(Hz_future[idx] - Hz_future[idx-1]);
+                Ey_future[idx] = coef_ey1[idx] * Ey_present[idx] - coef_ey2[idx] * (Hz_future[idx] - Hz_future[idx-Ny_points]);
+            }
+        }
+        for (int i=0; i<Nx_points; i++){
+            for (int j=0; j<Ny_points; j++){
+                int idx = i * Ny_points + j;
+                Ex_present[idx] = Ex_future[idx];
+                Ey_present[idx] = Ey_future[idx];
+                Hzx_present[idx] = Hzx_future[idx]; 
+                Hzy_present[idx] = Hzy_future[idx];
+                Hz_present[idx] = Hz_future[idx];
+            }
+        }
+    }
 }

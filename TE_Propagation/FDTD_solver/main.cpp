@@ -6,6 +6,40 @@
 #include<fstream>
 #include<algorithm>
 
+/* 
+    function to save datas for n_steps for solver's stability
+    
+*/
+
+void save_snapshot(int snapshot_id, const std::vector<double>& eps, const std::vector<double>& mu,
+                   const std::vector<double>& Ex, const std::vector<double>& Ey, const std::vector<double>& Hz) {
+                    
+     std::string filename = "FDTD_data_snapshot_" + std::to_string(snapshot_id) + ".csv";
+    std::ofstream file(filename);
+    file << "x,y,eps,Hz,Ex,Ey,E_mag,W,Sx,Sy,S_mag\n";
+
+    for (int i=0; i<Config::Nx_points; i++){
+        for (int j=0; j<Config::Ny_points; j++){
+            int idx = i * Config::Ny_points + j;
+            double x = Config::x_start + i * Config::dx;
+            double y = Config::y_start + j * Config::dy;
+            
+            double hz = Hz[idx]; double ex = Ex[idx]; double ey = Ey[idx];
+            double e_mag = std::sqrt((ex*ex)+(ey*ey));
+            double W = 0.5 * eps[idx] * (e_mag*e_mag) + 0.5 * mu[idx] * (hz*hz);
+            double sx = ey*hz; double sy = -ex*hz;
+            double s_mag = std::sqrt((sx*sx)+(sy*sy));
+
+            file << x << "," << y << "," << eps[idx] << "," << hz << "," << ex << "," 
+                 << ey << "," << e_mag << "," << W << "," << sx << "," << sy << "," << s_mag << "\n";
+        }
+    }
+    file.close();
+    std::cout << "Saved: " << filename << std::endl;
+}
+
+
+
 int main(){
     // getting parameters of problem
     int N_points = Config::Nx_points * Config::Ny_points;
@@ -96,4 +130,25 @@ int main(){
         }
     }
     file.close();
+
+
+    // /*
+    //     block of code to evaluate solver's stability
+    // */
+
+    // solver.initial_pulse(Config::Nx_points, Config::Ny_points, Ex_present.data(), Ey_present.data(), Hzx_present.data(), Hzy_present.data(), Hz_present.data());
+
+    // int total_steps = std::ceil(Config::T_simulation / Config::dt);
+    // int num_snapshots = 4;
+    // int steps_per_snapshot = total_steps / num_snapshots;
+
+    // for (int s = 1; s <= num_snapshots; s++) {
+    //     solver.snapshots_FDTD(Config::Nx_points, Config::Ny_points, steps_per_snapshot, coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data(), coef_hxz1.data(), coef_hxz2.data(),
+    //     coef_hzy1.data(), coef_hzy2.data(), Ex_future.data(), Ex_present.data(), Ey_future.data(), Ey_present.data(), Hzx_future.data(), Hzy_future.data(), 
+    //     Hzx_present.data(), Hzy_present.data(), Hz_future.data(), Hz_present.data());
+
+    //     save_snapshot(s, eps, mu, Ex_present, Ey_present, Hz_present);
+    // }
+    
+    return 0;
 }
