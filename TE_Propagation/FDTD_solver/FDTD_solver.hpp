@@ -16,8 +16,8 @@ class FDTD_solver{
 
         // function of FDTD approach | main function for solver
         void FDTD(int Nx_points, int Ny_points, const double *coef_ex1, const double *coef_ex2, const double *coef_ey1, const double *coef_ey2,
-        const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double *Ex_future, double *Ex_present, double *Ey_future, double *Ey_present,
-        double *Hzx_future, double *Hzy_future, double *Hzx_present, double *Hzy_present, double *Hz_future, double *Hz_present); 
+        const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double* __restrict__ Ex_future, double* __restrict__ Ex_present, double* __restrict__ Ey_future, double* __restrict__ Ey_present,
+        double* __restrict__ Hzx_future, double* __restrict__ Hzy_future, double* __restrict__ Hzx_present, double* __restrict__ Hzy_present, double* __restrict__ Hz_future, double* __restrict__ Hz_present); 
 
         /* 
             functions to get snapshos during simulation in order to check solver's stability

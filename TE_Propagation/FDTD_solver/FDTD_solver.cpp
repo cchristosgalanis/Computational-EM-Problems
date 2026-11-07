@@ -1,6 +1,8 @@
 #include"FDTD_solver.hpp"
 #include<cmath>
 #include<vector>
+
+
 /*
     This file contains functions to compute FDTD approach to solution
 */
@@ -110,8 +112,8 @@ void FDTD_solver::coef_var_magnetic(int Nx_points, int Ny_points, const double *
 // main function for FDTD approach 
  // function of FDTD approach 
 void FDTD_solver::FDTD(int Nx_points, int Ny_points, const double *coef_ex1, const double *coef_ex2, const double *coef_ey1, const double *coef_ey2,
-    const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double *Ex_future, double *Ex_present, double *Ey_future, double *Ey_present,
-    double *Hzx_future, double *Hzy_future, double *Hzx_present, double *Hzy_present, double *Hz_future, double *Hz_present){
+    const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double* __restrict__ Ex_future, double* __restrict__ Ex_present, double* __restrict__ Ey_future, double* __restrict__ Ey_present,
+    double* __restrict__ Hzx_future, double* __restrict__ Hzy_future, double* __restrict__ Hzx_present, double* __restrict__ Hzy_present, double* __restrict__ Hz_future, double* __restrict__ Hz_present){
         /*
             all of thea arguments are vectors alreary computed in the main pipeline. We have a TE mode, and using PML as absorption method, thus 
             we use Berenger approach, so we can absorp waves with θi angle, thats why we have Hzx, and Hzy. 
@@ -138,9 +140,6 @@ void FDTD_solver::FDTD(int Nx_points, int Ny_points, const double *coef_ex1, con
                Hzy_present[idx] = (Config::Ho / 2) * std::exp(-(std::pow((y - Config::mean_y),2))/(2*std::pow(Config::sigma_g,2)));
                Hz_present[idx] = Hzx_present[idx] + Hzy_present[idx];
 
-               // initialize electric field
-               Ex_present[idx] = 0.0;
-               Ey_present[idx] = 0.0;
             }
         }
 
@@ -202,9 +201,6 @@ void FDTD_solver::initial_pulse(int Nx_points, int Ny_points, double *Ex_present
                Hzy_present[idx] = (Config::Ho / 2) * std::exp(-(std::pow((y - Config::mean_y),2))/(2*std::pow(Config::sigma_g,2)));
                Hz_present[idx] = Hzx_present[idx] + Hzy_present[idx];
 
-               // initialize electric field
-               Ex_present[idx] = 0.0;
-               Ey_present[idx] = 0.0;
         }
     }
 }
