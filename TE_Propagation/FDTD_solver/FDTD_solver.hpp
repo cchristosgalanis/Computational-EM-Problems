@@ -30,7 +30,6 @@ class FDTD_solver{
         void snapshots_FDTD(int Nx_points, int Ny_points, int steps_to_run, const double *coef_ex1, const double *coef_ex2, const double *coef_ey1, const double *coef_ey2,
             const double *coef_hxz1, const double *coef_hzx2, const double *coef_hzy1, const double *coef_hzy2, double *Ex_future, double *Ex_present, double *Ey_future, double *Ey_present,
             double *Hzx_future, double *Hzy_future, double *Hzx_present, double *Hzy_present, double *Hz_future, double *Hz_present);
-    
 };
 
 #endif

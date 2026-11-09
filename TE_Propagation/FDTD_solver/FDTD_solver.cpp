@@ -2,7 +2,6 @@
 #include<cmath>
 #include<vector>
 
-
 /*
     This file contains functions to compute FDTD approach to solution
 */
@@ -29,15 +28,15 @@ void FDTD_solver::create_grid(int Nx_points, int Ny_points, double eps_0, double
                 sigma_mx[idx] = 0.0;
                 sigma_my[idx] = 0.0;
             }
-            else if (x_interface < Config::x0){
+            else if (x < Config::x0){
                 eps[idx] = eps_0;
                 sigma_ex[idx] = 0.0;
                 sigma_ey[idx] = 0.0;
                 sigma_mx[idx] = 0.0;
                 sigma_my[idx] = 0.0;
             }
-            else {
-                eps[idx] = eps_0 * Config::eps_r;
+            else if (x > Config::x0){
+                eps[idx] = eps_0 * eps_r;
                 sigma_ex[idx] = 0.0;
                 sigma_ey[idx] = 0.0;
                 sigma_mx[idx] = 0.0;

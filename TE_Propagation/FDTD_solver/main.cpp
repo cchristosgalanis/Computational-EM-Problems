@@ -149,6 +149,5 @@ int main(){
 
         save_snapshot(s, eps, mu, Ex_present, Ey_present, Hz_present);
     }
-    
     return 0;
 }
