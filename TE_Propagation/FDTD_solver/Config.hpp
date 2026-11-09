@@ -21,7 +21,7 @@ namespace Config {
     const double sigma_max = 0.05;
     const int pml_order = 3;
     // problem variables
-    const double T_simulation = 4e-9; // time of simulation
+    const double T_simulation = 2.0e-9; // time of simulation
     const double c0 = 2.998e8; // speed of light
     const double eps_0 = 8.854e-12; 
     const double mu_0 = (4.0*pi)*1e-7;

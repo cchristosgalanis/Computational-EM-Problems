@@ -11,10 +11,10 @@
     
 */
 
-void save_snapshot(int snapshot_id, const std::vector<double>& eps, const std::vector<double>& mu,
+void save_snapshot(int snapshot_id, const std::vector<double>& eps_x, const std::vector<double>& eps_y, const std::vector<double>& mu,
                    const std::vector<double>& Ex, const std::vector<double>& Ey, const std::vector<double>& Hz) {
-                    
-     std::string filename = "FDTD_data_snapshot_" + std::to_string(snapshot_id) + ".csv";
+
+    std::string filename = "FDTD_data_snapshot_" + std::to_string(snapshot_id) + ".csv";
     std::ofstream file(filename);
     file << "x,y,eps,Hz,Ex,Ey,E_mag,W,Sx,Sy,S_mag\n";
 
@@ -23,14 +23,16 @@ void save_snapshot(int snapshot_id, const std::vector<double>& eps, const std::v
             int idx = i * Config::Ny_points + j;
             double x = Config::x_start + i * Config::dx;
             double y = Config::y_start + j * Config::dy;
+            // compute eps
+            double eps = std::sqrt((eps_x[idx]*eps_x[idx]) + (eps_y[idx]*eps_y[idx]));
             
             double hz = Hz[idx]; double ex = Ex[idx]; double ey = Ey[idx];
             double e_mag = std::sqrt((ex*ex)+(ey*ey));
-            double W = 0.5 * eps[idx] * (e_mag*e_mag) + 0.5 * mu[idx] * (hz*hz);
+            double W = 0.5 * eps * (e_mag*e_mag) + 0.5 * mu[idx] * (hz*hz);
             double sx = ey*hz; double sy = -ex*hz;
             double s_mag = std::sqrt((sx*sx)+(sy*sy));
 
-            file << x << "," << y << "," << eps[idx] << "," << hz << "," << ex << "," 
+            file << x << "," << y << "," << eps << "," << hz << "," << ex << "," 
                  << ey << "," << e_mag << "," << W << "," << sx << "," << sy << "," << s_mag << "\n";
         }
     }
@@ -45,7 +47,8 @@ int main(){
     int N_points = Config::Nx_points * Config::Ny_points;
 
     // vectors 
-    std::vector<double> eps(N_points, 1.0); // dielectric values
+    std::vector<double> eps_x(N_points, 1.0); // dielectric values X-axe
+    std::vector<double> eps_y(N_points, 1.0); // dielectric values Y-axe
     std::vector<double> mu(N_points, 1.0); // μ0 values
     std::vector<double> sigma_ex(N_points, 0.0); // cond value for electric field to x axe
     std::vector<double> sigma_ey(N_points, 0.0); // cond value for electric field to y axe
@@ -59,10 +62,11 @@ int main(){
     std::vector<double> coef_ey2(N_points, 0.0);
 
     // vectors for coef variables (magnetic) for update equations
-    std::vector<double> coef_hxz1(N_points, 0.0);
-    std::vector<double> coef_hxz2(N_points, 0.0);
+    std::vector<double> coef_hzx1(N_points, 0.0);
+    std::vector<double> coef_hzx2(N_points, 0.0);
     std::vector<double> coef_hzy1(N_points, 0.0);
     std::vector<double> coef_hzy2(N_points, 0.0);
+
 
     // vectors for electric and magnetic field
     std::vector<double> Ex_present(N_points, 0.0);
@@ -80,18 +84,15 @@ int main(){
     FDTD_solver solver;
 
     // creating grid
-    solver.create_grid(Config::Nx_points, Config::Ny_points, Config::eps_0, Config::eps_r, eps.data(),mu.data(), sigma_ex.data(), sigma_ey.data(), sigma_mx.data(), sigma_my.data());
-
+    solver.create_grid(Config::Nx_points, Config::Ny_points, Config::eps_0, Config::eps_r, eps_x.data(), eps_y.data(), mu.data(), sigma_ex.data(), sigma_ey.data(), sigma_mx.data(), sigma_my.data());
     // coef for electrif field update equations
-    solver.coef_var_electric(Config::Nx_points, Config::Ny_points, sigma_ex.data(), sigma_ey.data(), eps.data(), coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data());
-
+    solver.coef_var_electric(Config::Nx_points, Config::Ny_points, sigma_ex.data(), sigma_ey.data(), eps_x.data(), eps_y.data(), coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data());
     // coef for magnetic field update equations
-    solver.coef_var_magnetic(Config::Nx_points, Config::Ny_points, sigma_mx.data(), sigma_my.data(), mu.data(), coef_hxz1.data(), coef_hxz2.data(), coef_hzy1.data(), coef_hzy2.data());
-    
-    // FDTD function 
-    solver.FDTD(Config::Nx_points, Config::Ny_points, coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data(), coef_hxz1.data(), coef_hxz2.data(),
-    coef_hzy1.data(), coef_hzy2.data(), Ex_future.data(), Ex_present.data(), Ey_future.data(), Ey_present.data(), Hzx_future.data(), Hzy_future.data(), 
-    Hzx_present.data(), Hzy_present.data(), Hz_future.data(), Hz_present.data());
+    solver.coef_var_magnetic(Config::Nx_points, Config::Ny_points, sigma_mx.data(), sigma_my.data(), mu.data(), coef_hzx1.data(), coef_hzx2.data(), coef_hzy1.data(), coef_hzy2.data());    
+    // // FDTD function 
+    // solver.FDTD(Config::Nx_points, Config::Ny_points, coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data(), coef_hxz1.data(), coef_hxz2.data(),
+    // coef_hzy1.data(), coef_hzy2.data(), Ex_future.data(), Ex_present.data(), Ey_future.data(), Ey_present.data(), Hzx_future.data(), Hzy_future.data(), 
+    // Hzx_present.data(), Hzy_present.data(), Hz_future.data(), Hz_present.data());
 
     /*
         saving to .csv file Hz, |E| = (Ex^2+Ey^2)^(1/2), Poynting vector, W -> electromagnetic energy
@@ -138,16 +139,23 @@ int main(){
 
     solver.initial_pulse(Config::Nx_points, Config::Ny_points, Ex_present.data(), Ey_present.data(), Hzx_present.data(), Hzy_present.data(), Hz_present.data());
 
+    save_snapshot(0, eps_x, eps_y, mu, Ex_present, Ey_present, Hz_present);
+
     int total_steps = std::ceil(Config::T_simulation / Config::dt);
     int num_snapshots = 4;
     int steps_per_snapshot = total_steps / num_snapshots;
 
     for (int s = 1; s <= num_snapshots; s++) {
-        solver.snapshots_FDTD(Config::Nx_points, Config::Ny_points, steps_per_snapshot, coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data(), coef_hxz1.data(), coef_hxz2.data(),
-        coef_hzy1.data(), coef_hzy2.data(), Ex_future.data(), Ex_present.data(), Ey_future.data(), Ey_present.data(), Hzx_future.data(), Hzy_future.data(), 
-        Hzx_present.data(), Hzy_present.data(), Hz_future.data(), Hz_present.data());
+        solver.snapshots_FDTD(Config::Nx_points, Config::Ny_points, steps_per_snapshot, 
+                              coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data(), 
+                              coef_hzx1.data(), coef_hzx2.data(), coef_hzy1.data(), coef_hzy2.data(), 
+                              Ex_future.data(), Ex_present.data(), Ey_future.data(), Ey_present.data(), 
+                              Hzx_future.data(), Hzy_future.data(), Hzx_present.data(), Hzy_present.data(), 
+                              Hz_future.data(), Hz_present.data());
 
-        save_snapshot(s, eps, mu, Ex_present, Ey_present, Hz_present);
+        save_snapshot(s, eps_x, eps_y, mu, Ex_present, Ey_present, Hz_present);
     }
+
+
     return 0;
 }

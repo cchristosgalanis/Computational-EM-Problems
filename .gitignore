@@ -9,3 +9,4 @@ __pycache__/
 *.txt
 heatmap_diagram.py
 diagrams.py
+*.py
