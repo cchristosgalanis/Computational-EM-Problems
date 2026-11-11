@@ -6,7 +6,7 @@
 class FDTD_solver {
     public:
         // function to create space of simulation
-        void create_grid(int Nx_points, int Ny_points, double eps_0, double eps_r, double *eps_x, double *eps_y, double *mu, double *sigma_ex, double *sigma_ey, double *sigma_mx, double *sigma_my);
+        void create_grid(int Nx_points, int Ny_points, double eps_0, double *eps_x, double *eps_y, double *mu, double *sigma_ex, double *sigma_ey, double *sigma_mx, double *sigma_my);
 
         // coefficients for electric field
         void coef_var_electric(int Nx_points, int Ny_points, const double *sigma_ex, const double *sigma_ey, const double *eps_x, double *eps_y, double *coef_ex1, double *coef_ex2, double *coef_ey1, double *coef_ey2);

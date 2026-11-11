@@ -15,13 +15,13 @@ namespace Config {
     const int Ny_points = 1000;
     const double x0 = 1.0;
     // PML boundaries
-    const int N_pml_x = 10;
-    const int N_pml_y = 10;
+    const int N_pml_x = 20;
+    const int N_pml_y = 20;
     //PML parameters
     const double sigma_max = 0.05;
     const int pml_order = 3;
     // problem variables
-    const double T_simulation = 2.0e-9; // time of simulation
+    const double T_simulation = 5.0e-9; // time of simulation
     const double c0 = 2.998e8; // speed of light
     const double eps_0 = 8.854e-12; 
     const double mu_0 = (4.0*pi)*1e-7;

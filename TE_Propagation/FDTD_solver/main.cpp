@@ -84,7 +84,7 @@ int main(){
     FDTD_solver solver;
 
     // creating grid
-    solver.create_grid(Config::Nx_points, Config::Ny_points, Config::eps_0, Config::eps_r, eps_x.data(), eps_y.data(), mu.data(), sigma_ex.data(), sigma_ey.data(), sigma_mx.data(), sigma_my.data());
+    solver.create_grid(Config::Nx_points, Config::Ny_points, Config::eps_0, eps_x.data(), eps_y.data(), mu.data(), sigma_ex.data(), sigma_ey.data(), sigma_mx.data(), sigma_my.data());
     // coef for electrif field update equations
     solver.coef_var_electric(Config::Nx_points, Config::Ny_points, sigma_ex.data(), sigma_ey.data(), eps_x.data(), eps_y.data(), coef_ex1.data(), coef_ex2.data(), coef_ey1.data(), coef_ey2.data());
     // coef for magnetic field update equations
@@ -142,7 +142,7 @@ int main(){
     save_snapshot(0, eps_x, eps_y, mu, Ex_present, Ey_present, Hz_present);
 
     int total_steps = std::ceil(Config::T_simulation / Config::dt);
-    int num_snapshots = 4;
+    int num_snapshots = 3;
     int steps_per_snapshot = total_steps / num_snapshots;
 
     for (int s = 1; s <= num_snapshots; s++) {
