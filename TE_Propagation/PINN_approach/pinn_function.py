@@ -92,6 +92,7 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
         ------------------------------------------------------------------------------------------------------------------------
     """
 
+    # function to compute conductances
     def compute_sigma(x, y, x_start, x_end, y_start, y_end, d_pml, Z_0, m=3):
         """
             function to create PML conductance
@@ -107,7 +108,7 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
         sigma_y = cfg.sigma_max * ((dy_bottom + dy_top) / d_pml) ** m
 
         # sigma* = (Z0^2/ε_r) * sigma
-        impendace = (Z_0**2) / eps_r_spatial
+        impendace = (Z_0**2) / eps_r_spatial # normalized impendance
         sigma_mx = impendace * sigma_x
         sigma_my = impendace * sigma_y
 
@@ -196,7 +197,12 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
     loss_pde = torch.mean(f_1**2) + torch.mean(f_2**2) + torch.mean(f_3**2)
 
     """
-        initial condition loss function
+        ------------------------------------------------------------------------------------------------------------------------
+
+              initial condition loss function
+
+        ------------------------------------------------------------------------------------------------------------------------
+
     """
 
     x_initial = XYT_initial[:, 0:1]
@@ -216,7 +222,12 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
 
 
     """
-        boundary conditios loss function
+         ------------------------------------------------------------------------------------------------------------------------
+
+                boundary conditios loss function
+
+        ------------------------------------------------------------------------------------------------------------------------
+
     """
 
     x_boundaries = XYT_bc[:, 0:1]
@@ -234,15 +245,9 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
 """
         ------------------------------------------------------------------------------------------------------------------------
                         Model solver | Time merching approach
-         ------------------------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------------------------
 
 """
-
-import copy
-import torch
-import torch.optim as optim
-import Config as cfg
-
 
 def train_time_marching(model,num_windows: int,adam_epochs: int,lbfgs_max_iter: int = 5000,lr_adam: float = 1e-4,lr_lbfgs: float = 0.05,
                         device: str = "mps" if torch.backends.mps.is_available() else "cpu"):

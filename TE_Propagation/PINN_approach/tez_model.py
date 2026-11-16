@@ -4,9 +4,16 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os
 
 import Config as cfg
 import pinn_function as pfn
+
+
+NUM_CORES = 8
+os.environ["OMP_NUM_THREADS"] = str(NUM_CORES)
+os.environ["MKL_NUM_THREADS"] = str(NUM_CORES)
+torch.set_num_threads(NUM_CORES)
 
 # class to create activation function Sine
 class Sine(nn.Module):
@@ -102,7 +109,7 @@ def predict_tez_at_time(trained_models, x_grid, y_grid, t_value, device):
     dt_window = (cfg.t_end - cfg.t_start) / num_windows
 
     window_idx = int((t_value - cfg.t_start) / dt_window)
-    window_idx = min(max(window_idx, 0), num_windows - 1)  # Ασφάλεια ορίων
+    window_idx = min(max(window_idx, 0), num_windows - 1) 
 
     active_model = trained_models[window_idx]
     active_model.eval()
@@ -123,7 +130,7 @@ def predict_tez_at_time(trained_models, x_grid, y_grid, t_value, device):
 
 
 if __name__ == "__main__":
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("cpu")
     print(f"Using device: {device}")
 
     hidden_layers = [64, 64, 64, 64]
@@ -133,7 +140,7 @@ if __name__ == "__main__":
     model.y_min, model.y_max = cfg.y_start, cfg.y_end
 
     # model training
-    num_windows = 4
+    num_windows = 15 
     trained_models = pfn.train_time_marching(
         model=model,
         num_windows=num_windows,
@@ -144,40 +151,83 @@ if __name__ == "__main__":
         device=str(device)
     )
 
-    # plots
     x_vals = np.linspace(cfg.x_start, cfg.x_end, 200)
     y_vals = np.linspace(cfg.y_start, cfg.y_end, 200)
     X_grid, Y_grid = np.meshgrid(x_vals, y_vals, indexing='ij')
 
-    target_times = np.linspace(cfg.t_start, cfg.t_end, 5)[1:]  # e.g 25%, 50%, 75%, 100% of time
+    target_times = np.linspace(cfg.t_start, cfg.t_end, 4)
 
-    fig, axes = plt.subplots(1, len(target_times), figsize=(18, 4), dpi=150)
+    # csv files
+    all_snapshots_data = []
+    
+    for snap_id, t_val in enumerate(target_times):
+        print(f"Exporting field data for Snapshot {snap_id} (t = {t_val:.3e} s)...")
+        Ex_2d, Ey_2d, Hz_2d = predict_tez_at_time(trained_models, X_grid, Y_grid, t_val, device)
+        
+        df_snap = pd.DataFrame({
+            'snapshot_id': snap_id,
+            'time_s': t_val,
+            'x': X_grid.flatten(),
+            'y': Y_grid.flatten(),
+            'Hz': Hz_2d.flatten(),
+            'Ex': Ex_2d.flatten(),
+            'Ey': Ey_2d.flatten()
+        })
+        all_snapshots_data.append(df_snap)
 
-    for idx, t_val in enumerate(target_times):
+    final_df = pd.concat(all_snapshots_data, ignore_index=True)
+    csv_filename = "PINN_fields_snapshots.csv"
+    final_df.to_csv(csv_filename, index=False)
+    print(f"✅ Field data successfully exported to {csv_filename}")
+
+
+    #plots
+    fig, axes = plt.subplots(3, 4, figsize=(22, 12), dpi=150)
+    field_names = ['Ex', 'Ey', 'Hz']
+
+    for col_idx, t_val in enumerate(target_times):
         print(f"Plotting fields at t = {t_val:.3e} s...")
         Ex_2d, Ey_2d, Hz_2d = predict_tez_at_time(trained_models, X_grid, Y_grid, t_val, device)
+        fields_data = [Ex_2d, Ey_2d, Hz_2d]
+        
+        for row_idx, field_data in enumerate(fields_data):
+            ax = axes[row_idx, col_idx]
+            
+            vmax = np.max(np.abs(field_data)) + 1e-12
+            im = ax.pcolormesh(X_grid, Y_grid, field_data, shading='auto', cmap='RdBu_r', vmin=-vmax, vmax=vmax)
 
-        ax = axes[idx]
-        vmax = np.max(np.abs(Hz_2d)) + 1e-12
-        im = ax.pcolormesh(X_grid, Y_grid, Hz_2d, shading='auto', cmap='RdBu_r', vmin=-vmax, vmax=vmax)
+            ax.axvline(x=cfg.x_interface, color='black', linestyle='--', linewidth=1.2)
 
-        pml_rect = plt.Rectangle(
-            (cfg.x_start + cfg.d_pml, cfg.y_start + cfg.d_pml),
-            (cfg.x_end - cfg.x_start) - 2 * cfg.d_pml,
-            (cfg.y_end - cfg.y_start) - 2 * cfg.d_pml,
-            linewidth=1.2, edgecolor='black', facecolor='none', linestyle='--'
-        )
-        ax.add_patch(pml_rect)
+            pml_rect = plt.Rectangle(
+                (cfg.x_start + cfg.d_pml, cfg.y_start + cfg.d_pml),
+                (cfg.x_end - cfg.x_start) - 2 * cfg.d_pml,
+                (cfg.y_end - cfg.y_start) - 2 * cfg.d_pml,
+                linewidth=1.2, edgecolor='gray', facecolor='none', linestyle=':', alpha=0.7
+            )
+            ax.add_patch(pml_rect)
 
-        ax.set_title(f"Hz at t = {t_val:.2e} s")
-        ax.set_xlabel("x (m)")
-        if idx == 0:
-            ax.set_ylabel("y (m)")
-        ax.set_aspect('equal')
-        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            ax.set_title(f"{field_names[row_idx]} Field (Snapshot {col_idx})", fontsize=11)
+            
+            if row_idx == 2:
+                ax.set_xlabel("x (m)")
+            else:
+                ax.set_xticklabels([])
+                
+            if col_idx == 0:
+                ax.set_ylabel("y (m)")
+            else:
+                ax.set_yticklabels([])
+                
+            ax.set_aspect('equal')
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    plt.suptitle("TEz Mode Wave Propagation with PML (SIREN PINN)", fontsize=14)
+            if row_idx == 0 and col_idx == 0:
+                ax.axvline(x=cfg.x_interface, color='black', linestyle='--', linewidth=1.2, label='Interface (x=1.0)')
+                dummy_rect = plt.Rectangle((0,0), 0, 0, linewidth=1.2, edgecolor='gray', facecolor='none', linestyle=':', label='PML Boundary')
+                ax.add_patch(dummy_rect)
+                ax.legend(loc='upper right', fontsize=8)
+
+    plt.suptitle("TEz Mode Wave Propagation - All Fields (SIREN PINN)", fontsize=16, y=0.98)
     plt.tight_layout()
-    plt.savefig("TEz_SIREN_PML_Results.png", dpi=300, bbox_inches='tight')
+    plt.savefig("TEz_SIREN_PML_All_Fields.png", dpi=300, bbox_inches='tight')
     plt.show()
-

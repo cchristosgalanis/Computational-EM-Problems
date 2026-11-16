@@ -15,7 +15,7 @@ x_interface = 1.0 # dielectric interface (e_r=12)
 y_start = 0.0
 y_end = 1.0
 t_start = 0.0
-t_end = 15e-9 # total time of simulation
+t_end = 5e-9 # total time of simulation
 d_pml = 0.2
 
 # problem variables
@@ -25,11 +25,11 @@ mu_0 = 4.0*pi*1.0e-7 # magnetic value of empty space
 eps_r = 12.0 # dielectric value interface
 H0 = 2.0 # Ho for initial magnetic gaussing pulse
 mean_x = 0.5 
-mean_y = 0.5
+mean_y = 0.3
 sigma_g = 0.1 # sigma_x = sigma_y -> circular polarization
 sigma_max = 0.1
 
 # number of points for every condition
 N_pde = 25000 # points for PDE
-N_ic = 2000 # points for initial condition
-N_bc = 2000 # points for boundary conditions | PML approach
+N_ic = 3000 # points for initial condition
+N_bc = 3000 # points for boundary conditions | PML approach
