@@ -13,3 +13,4 @@ generate_3d.py
 generate_heatmaps.py
 generate_spacetime.py
 verify_solver.py
+*.txt

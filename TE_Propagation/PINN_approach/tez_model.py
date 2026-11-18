@@ -33,9 +33,9 @@ class TEz_solver(nn.Module):
         self.first_omega0 = first_omega0
         self.hidden_omega0 = hidden_omega0
 
-        self.x_min, self.x_max = 0.0, 2.0
-        self.y_min, self.y_max = 0.0, 1.0
-        self.t_min, self.t_max = 0.0, 2.0
+        self.x_min, self.x_max = cfg.x_start, cfg.x_end
+        self.y_min, self.y_max = cfg.y_start, cfg.y_end
+        self.t_min, self.t_max = cfg.t_start, cfg.t_end
 
         layer_sizes = [3] + layers + [3]
         self.network = nn.ModuleList()
@@ -136,9 +136,6 @@ if __name__ == "__main__":
     hidden_layers = [64, 64, 64, 64]
     model = TEz_solver(hidden_layers, first_omega0=30.0, hidden_omega0=5.0)
 
-    model.x_min, model.x_max = cfg.x_start, cfg.x_end
-    model.y_min, model.y_max = cfg.y_start, cfg.y_end
-
     # model training
     num_windows = 15 
     trained_models = pfn.train_time_marching(
@@ -178,7 +175,7 @@ if __name__ == "__main__":
     final_df = pd.concat(all_snapshots_data, ignore_index=True)
     csv_filename = "PINN_fields_snapshots.csv"
     final_df.to_csv(csv_filename, index=False)
-    print(f"✅ Field data successfully exported to {csv_filename}")
+    print(f" Field data successfully exported to {csv_filename}")
 
 
     #plots
@@ -199,9 +196,9 @@ if __name__ == "__main__":
             ax.axvline(x=cfg.x_interface, color='black', linestyle='--', linewidth=1.2)
 
             pml_rect = plt.Rectangle(
-                (cfg.x_start + cfg.d_pml, cfg.y_start + cfg.d_pml),
-                (cfg.x_end - cfg.x_start) - 2 * cfg.d_pml,
-                (cfg.y_end - cfg.y_start) - 2 * cfg.d_pml,
+                (cfg.x_start + cfg.d_pml_x, cfg.y_start + cfg.d_pml_y),
+                (cfg.x_end - cfg.x_start) - 2 * cfg.d_pml_x,
+                (cfg.y_end - cfg.y_start) - 2 * cfg.d_pml_y,
                 linewidth=1.2, edgecolor='gray', facecolor='none', linestyle=':', alpha=0.7
             )
             ax.add_patch(pml_rect)

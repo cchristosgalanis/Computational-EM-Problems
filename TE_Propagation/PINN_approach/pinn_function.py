@@ -93,24 +93,24 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
     """
 
     # function to compute conductances
-    def compute_sigma(x, y, x_start, x_end, y_start, y_end, d_pml, Z_0, m=3):
-        """
-            function to create PML conductance
-            sigma_e = 0 -> in collocation points | sigma_e != 0 -> in PML
-            sigma_m = 0 -> in collocation points | sigma_m != 0 -> in PML
-        """
-        dx_left = torch.clamp((x_start + d_pml) - x, min=0.0)
-        dx_right = torch.clamp(x - (x_end - d_pml), min=0.0)
-        sigma_x = cfg.sigma_max * ((dx_left + dx_right)/d_pml) ** m
+    def compute_sigma(x, y, x_start, x_end, y_start, y_end, d_pml_x, d_pml_y, Z_0, m):
+        dx_left = torch.clamp((x_start + d_pml_x) - x, min=0.0)
+        dx_right = torch.clamp(x - (x_end - d_pml_x), min=0.0)
+        
+        # conductane to X-axe
+        sigma_x = cfg.sigma_max * ((dx_left + dx_right) / d_pml_x) ** m
 
-        dy_bottom = torch.clamp((y_start + d_pml) - y, min=0.0)
-        dy_top = torch.clamp(y - (y_end - d_pml), min=0.0)
-        sigma_y = cfg.sigma_max * ((dy_bottom + dy_top) / d_pml) ** m
+        dy_bottom = torch.clamp((y_start + d_pml_y) - y, min=0.0)
+        dy_top = torch.clamp(y - (y_end - d_pml_y), min=0.0)
+        
+        # conductance to Y-axe
+        sigma_y = cfg.sigma_max * ((dy_bottom + dy_top) / d_pml_y) ** m
 
-        # sigma* = (Z0^2/ε_r) * sigma
-        impendace = (Z_0**2) / eps_r_spatial # normalized impendance
-        sigma_mx = impendace * sigma_x
-        sigma_my = impendace * sigma_y
+        # dielectric and magnetic const
+        eps_r_spatial = torch.where(x >= cfg.x_interface, cfg.eps_r, 1.0)
+        impedance = (Z_0**2) / eps_r_spatial
+        sigma_mx = impedance * sigma_x
+        sigma_my = impedance * sigma_y
 
         return sigma_x, sigma_y, sigma_mx, sigma_my
 
@@ -124,6 +124,8 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
 
     # get model's prediction for PDE 
     Ex, Ey, Hz = model(x_pde, y_pde, t_pde)
+    Ex = Z_0 * Ex
+    Ey = Z_0 * Ey
     ones = torch.ones_like(Ex)
 
     # compute first order detivatives
@@ -183,15 +185,13 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
     eps_r_spatial = torch.where(x_pde >= cfg.x_interface, cfg.eps_r, 1.0)
     # function to compute conductances for PML
     sigma_x, sigma_y, sigma_mx, sigma_my = compute_sigma(
-        x_pde, y_pde,
-        cfg.x_start, cfg.x_end, cfg.y_start, cfg.y_end,
-        cfg.d_pml,Z_0, m=3
-    )
+        x_pde, y_pde, cfg.x_start, cfg.x_end, cfg.y_start, cfg.y_end, cfg.d_pml_x, cfg.d_pml_y, Z_0, cfg.pml_order)
 
     # residual function's PDE terms |  normalized approach -> div with c_0 to get tau = c_0 * t
-    f_1 = eps_r_spatial * (dEx_dt / cfg.c0) + (Z_0 * sigma_y) * Ex - (Z_0) * dHz_dy
-    f_2 = eps_r_spatial * (dEy_dt / cfg.c0) + (Z_0 * sigma_x) * Ey + (Z_0) * dHz_dx
-    f_3 = (Z_0) * (dHz_dt / cfg.c0) + ((sigma_mx + sigma_my) / Z_0) * Hz - dEx_dy + dEy_dx
+    # NN output -> E_x*, E_y*, H_z* 
+    f_1 = eps_r_spatial * (dEx_dt / cfg.c0) - Z_0 * dHz_dy + (Z_0 * sigma_y) * Ex
+    f_2 = eps_r_spatial * (dEy_dt / cfg.c0) + Z_0 * dHz_dx + (Z_0 * sigma_x) * Ey
+    f_3 = Z_0 * (dHz_dt / cfg.c0) - dEx_dy + dEy_dx + (sigma_mx + sigma_my) * Hz
 
     # PDE loss function term
     loss_pde = torch.mean(f_1**2) + torch.mean(f_2**2) + torch.mean(f_3**2)
@@ -216,9 +216,13 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
     else:
         with torch.no_grad():
             Ex_0, Ey_0, Hz_0 = prev_model(x_initial, y_initial, t_initial)
+            Ex_0 = Z_0 * Ex_0
+            Ey_0 = Z_0 * Ey_0
 
     Ex_init, Ey_init, Hz_init = model(x_initial, y_initial, t_initial)
-    loss_ic = torch.mean((Ex_init - Ex_0)**2) + torch.mean((Ey_init - Ey_0)**2) + torch.mean((Hz_init - Hz_0)**2)
+    Ex_init = Z_0 * Ex_init
+    Ey_init = Z_0 * Ey_init
+    loss_ic = torch.mean((Ex_init - Ex_0)**2) + torch.mean((Ey_init - Ey_0)**2) + torch.mean((Z_0 * (Hz_init - Hz_0))**2)
 
 
     """
@@ -235,11 +239,16 @@ def residual_function(model, XYT_pde, XYT_initial, XYT_bc, prev_model=None):
     t_boundaries = XYT_bc[:, 2:3]
 
     Ex_bc, Ey_bc, Hz_bc = model(x_boundaries, y_boundaries, t_boundaries)
+    Ex_bc = Z_0 * Ex_bc
+    Ey_bc = Z_0 * Ey_bc
 
     # boundaries loss term
-    loss_bc = torch.mean(Ex_bc**2) + torch.mean(Ey_bc**2) + torch.mean(Hz_bc**2)
+    loss_bc = torch.mean(Ex_bc**2) + torch.mean(Ey_bc**2) + torch.mean((Z_0 * Hz_bc)**2)
 
-    return loss_pde + 1e3*loss_ic + 1e3*loss_bc
+    E_max = Z_0 * cfg.H0
+    scale_factor = 1.0 / (E_max**2)
+
+    return scale_factor * (loss_pde + 1e3 * loss_ic + 1e3 * loss_bc)
 
 
 """
@@ -267,10 +276,6 @@ def train_time_marching(model,num_windows: int,adam_epochs: int,lbfgs_max_iter: 
         print(f"\n{'='*65}")
         print(f"Time Windoow {w + 1}/{num_windows}: t in [{t_w_start:.3e}, {t_w_end:.3e}] s")
         print(f"{'='*65}")
-
-        # update boundaries for curr timw windoe
-        model.t_min = t_w_start
-        model.t_max = t_w_end
 
         # create points for curr window
         XYT_pde, XYT_initial, XYT_bc = create_points(

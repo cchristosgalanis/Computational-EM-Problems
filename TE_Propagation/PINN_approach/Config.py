@@ -29,7 +29,21 @@ mean_y = 0.3
 sigma_g = 0.1 # sigma_x = sigma_y -> circular polarization
 sigma_max = 0.1
 
+Nx_points = 1500
+Ny_points = 1000
+dx = (x_end - x_start) / (Nx_points - 1)
+dy = (y_end - y_start) / (Ny_points - 1)
+
+N_pml_x = 35
+N_pml_y = 35
+
+d_pml_x = N_pml_x * dx
+d_pml_y = N_pml_y * dy
+
+sigma_max = 6.5
+pml_order = 3
+
 # number of points for every condition
-N_pde = 25000 # points for PDE
-N_ic = 3000 # points for initial condition
-N_bc = 3000 # points for boundary conditions | PML approach
+N_pde = 5000 # points for PDE
+N_ic = 1000 # points for initial condition
+N_bc = 1000 # points for boundary conditions | PML approach
